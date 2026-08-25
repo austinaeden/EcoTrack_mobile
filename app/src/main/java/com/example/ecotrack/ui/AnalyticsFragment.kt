@@ -2,11 +2,10 @@ package com.example.ecotrack.ui
 
 import android.graphics.Color
 import android.os.Bundle
-import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.annotation.AttrRes
+import android.widget.TextView
 import androidx.fragment.app.Fragment
 import com.example.ecotrack.R
 import com.github.mikephil.charting.charts.BarChart
@@ -24,14 +23,17 @@ class AnalyticsFragment : Fragment() {
     ): View? {
         val view = inflater.inflate(R.layout.fragment_analytics, container, false)
         val barChart = view.findViewById<BarChart>(R.id.barChart)
+        val tvTitle = view.findViewById<TextView>(R.id.tvAnalyticsTitle)
 
-        setupChart(barChart)
+        // Set specific dark grey color for interpretation words
+        val darkGrey = Color.parseColor("#616161")
+        tvTitle.setTextColor(darkGrey)
+
+        setupChart(barChart, darkGrey)
         return view
     }
 
-    private fun setupChart(barChart: BarChart) {
-        val textColor = getThemeColor(android.R.attr.textColorPrimary)
-
+    private fun setupChart(barChart: BarChart, textColor: Int) {
         val entries = arrayListOf(
             BarEntry(0f, 4200f),
             BarEntry(1f, 6800f),
@@ -45,7 +47,7 @@ class AnalyticsFragment : Fragment() {
         val dataSet = BarDataSet(entries, "Steps Walked").apply {
             color = Color.parseColor("#4CAF50")
             valueTextColor = textColor
-            valueTextSize = 12f
+            valueTextSize = 10f
         }
 
         val days = arrayOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
@@ -58,22 +60,27 @@ class AnalyticsFragment : Fragment() {
                 isGranularityEnabled = true
                 this.textColor = textColor
                 setDrawGridLines(false)
+                axisLineColor = textColor
             }
             
-            axisLeft.textColor = textColor
+            axisLeft.apply {
+                this.textColor = textColor
+                axisLineColor = textColor
+                gridColor = Color.LTGRAY
+            }
+            
             axisRight.isEnabled = false
-            legend.textColor = textColor
+            legend.apply {
+                this.textColor = textColor
+                isEnabled = true
+            }
+            
             description.isEnabled = false
+            setNoDataTextColor(textColor)
             
             data = BarData(dataSet)
             animateY(1000)
             invalidate()
         }
-    }
-
-    private fun getThemeColor(@AttrRes attr: Int): Int {
-        val typedValue = TypedValue()
-        requireContext().theme.resolveAttribute(attr, typedValue, true)
-        return typedValue.data
     }
 }

@@ -7,16 +7,35 @@
     android:background="?android:attr/windowBackground">
 
     <TextView
+        android:id="@+id/tvAnalyticsTitle"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Weekly Step Trends"
-        android:textColor="?android:attr/textColorPrimary"
-        android:textSize="20sp"
+        android:textColor="#616161"
+        android:textSize="22sp"
         android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/tvAnalyticsSubTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:text="Your activity performance over the last 7 days."
+        android:textColor="#757575"
+        android:textSize="14sp" />
 
     <com.github.mikephil.charting.charts.BarChart
         android:id="@+id/barChart"
         android:layout_width="match_parent"
         android:layout_height="350dp"
-        android:layout_marginTop="16dp" />
+        android:layout_marginTop="24dp" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="The graph above shows your daily step counts. Higher bars indicate more active days. Keep moving to maintain a healthy trend!"
+        android:textColor="#616161"
+        android:textSize="14sp"
+        android:lineSpacingExtra="4dp" />
 </LinearLayout>
