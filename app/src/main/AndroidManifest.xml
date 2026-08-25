@@ -2,16 +2,15 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Permissions stay OUTSIDE <application> -->
+    <!-- Permissions -->
     <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
-
-    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
     <application
+        android:name=".EcoTrackApp"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -21,7 +20,6 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.EcoTrack">
 
-        <!-- LoginActivity is the app launcher -->
         <activity
             android:name=".ui.LoginActivity"
             android:exported="true">
@@ -31,7 +29,6 @@
             </intent-filter>
         </activity>
 
-        <!-- MainActivity opens after successful login -->
         <activity
             android:name=".MainActivity"
             android:exported="false" />
