@@ -9,11 +9,16 @@ class EcoTrackApp : Application() {
     override fun onCreate() {
         super.onCreate()
         
-        // Apply Material You dynamic colors
-        DynamicColors.applyToActivitiesIfAvailable(this)
+        // 1. OSMDroid Configuration: Set a TRULY UNIQUE User-Agent first.
+        // OSM servers block generic names like "EcoTrack" or anything with "com.example".
+        val config = Configuration.getInstance()
+        config.userAgentValue = "EcoTrack-Fitness-Personal-Project-Unique-987654321-User"
         
-        // Initialize OpenStreetMap configuration globally
-        Configuration.getInstance().load(this, PreferenceManager.getDefaultSharedPreferences(this))
-        Configuration.getInstance().userAgentValue = packageName
+        // Load configuration from shared preferences
+        val sharedPrefs = PreferenceManager.getDefaultSharedPreferences(this)
+        config.load(this, sharedPrefs)
+        
+        // 2. Apply Material You dynamic colors
+        DynamicColors.applyToActivitiesIfAvailable(this)
     }
 }

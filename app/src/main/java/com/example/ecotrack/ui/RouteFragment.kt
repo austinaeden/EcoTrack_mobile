@@ -22,32 +22,30 @@ class RouteFragment : Fragment() {
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View? {
-        return inflater.inflate(R.layout.fragment_route, container, false)
-    }
+    ): View? = inflater.inflate(R.layout.fragment_route, container, false)
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
         map = view.findViewById(R.id.map)
         map?.apply {
-            // Ensure tile source is set
             setTileSource(TileSourceFactory.MAPNIK)
             setMultiTouchControls(true)
-            
-            // Fix display glitches by disabling hardware acceleration if needed
-            // setLayerType(View.LAYER_TYPE_SOFTWARE, null) 
 
-            // Handle Dark Mode for Map Tiles
+            // Handle Dark Mode: Invert colors to make the map dark-themed
             val isNightMode = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
             if (isNightMode) {
                 val inverseMatrix = ColorMatrix(floatArrayOf(
-                    -0.9f, 0f, 0f, 0f, 255f,
-                    0f, -0.9f, 0f, 0f, 255f,
-                    0f, 0f, -0.9f, 0f, 255f,
-                    0f, 0f, 0f, 1f, 0f
+                    -1.0f, 0.0f, 0.0f, 0.0f, 255.0f,
+                    0.0f, -1.0f, 0.0f, 0.0f, 255.0f,
+                    0.0f, 0.0f, -1.0f, 0.0f, 255.0f,
+                    0.0f, 0.0f, 0.0f, 1.0f, 0.0f
                 ))
+                val destinationMatrix = ColorMatrix()
+                destinationMatrix.setSaturation(0f) 
+                inverseMatrix.postConcat(destinationMatrix)
                 overlayManager.tilesOverlay.setColorFilter(ColorMatrixColorFilter(inverseMatrix))
+                setBackgroundColor(Color.BLACK)
             }
 
             // Default position (Nairobi)
@@ -58,7 +56,7 @@ class RouteFragment : Fragment() {
             val marker = Marker(this)
             marker.position = startPoint
             marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-            marker.title = "Current Tracking"
+            marker.title = "Current Location"
             overlays.add(marker)
         }
     }
