@@ -13,6 +13,15 @@ interface WeatherApiService {
         @Query("units") units: String = "metric",
         @Query("appid") apiKey: String
     ): Response<WeatherResponse>
+
+    // Query weather using latitude and longitude
+    @GET("data/2.5/weather")
+    suspend fun getWeatherByCoordinates(
+        @Query("lat") lat: Double,
+        @Query("lon") lon: Double,
+        @Query("units") units: String = "metric",
+        @Query("appid") apiKey: String
+    ): Response<WeatherResponse>
 }
 
 object RetrofitClient {

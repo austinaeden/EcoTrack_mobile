@@ -1,6 +1,7 @@
 package com.example.ecotrack
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.pm.PackageManager
 import android.graphics.Canvas
 import android.graphics.Color
@@ -21,6 +22,8 @@ import com.example.ecotrack.data.NetworkResult
 import com.example.ecotrack.data.StepSensorManager
 import com.example.ecotrack.ui.ActivityAdapter
 import com.example.ecotrack.ui.MainViewModel
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationServices
 import com.google.android.material.snackbar.Snackbar
 
 class MainActivity : AppCompatActivity() {
@@ -34,7 +37,11 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvLiveSteps: TextView
 
     private var currentTemp: Double = 0.0
+    private val apiKey = "d5113f92ed94636874a70fbc79f6c49f"
 
+    private lateinit var fusedLocationClient: FusedLocationProviderClient
+
+    // Step Sensor Permission Launcher
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted ->
@@ -42,6 +49,21 @@ class MainActivity : AppCompatActivity() {
             startStepCounter()
         } else {
             Toast.makeText(this, "Activity Recognition permission required for step counter", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // Location Permission Launcher
+    private val requestLocationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val fineLocationGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] ?: false
+        val coarseLocationGranted = permissions[Manifest.permission.ACCESS_COARSE_LOCATION] ?: false
+
+        if (fineLocationGranted || coarseLocationGranted) {
+            getCurrentLocationAndFetchWeather()
+        } else {
+            Toast.makeText(this, "Location permission denied. Defaulting to Nairobi.", Toast.LENGTH_SHORT).show()
+            viewModel.fetchWeather("Nairobi", apiKey)
         }
     }
 
@@ -55,6 +77,9 @@ class MainActivity : AppCompatActivity() {
         val btnSaveLog = findViewById<Button>(R.id.btnSaveLog)
         val recyclerView = findViewById<RecyclerView>(R.id.recyclerView)
 
+        // Initialize Location Services Client
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+
         // Setup RecyclerView
         recyclerView.layoutManager = LinearLayoutManager(this)
         recyclerView.adapter = adapter
@@ -62,7 +87,7 @@ class MainActivity : AppCompatActivity() {
         // Step Sensor setup
         stepSensorManager = StepSensorManager(this)
 
-        // Observe ViewModel
+        // Observe ViewModel logs
         viewModel.allLogs.observe(this) { logs ->
             adapter.submitList(logs)
         }
@@ -88,9 +113,6 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // Fetch Weather
-        viewModel.fetchWeather("Nairobi", "d5113f92ed94636874a70fbc79f6c49f")
-
         // Save activity button action
         btnSaveLog.setOnClickListener {
             val steps = stepSensorManager.currentSteps
@@ -98,13 +120,15 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(this, "Activity Saved!", Toast.LENGTH_SHORT).show()
         }
 
+        // Check Permissions for Sensor & Location
         checkSensorPermissions()
+        checkLocationPermissions()
 
+        // Swipe-To-Delete Setup
         val deleteBackground = ColorDrawable(Color.RED)
         val deleteIcon = ContextCompat.getDrawable(this, R.drawable.ic_delete)
 
         val swipeToDeleteCallback = object : ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.LEFT or ItemTouchHelper.RIGHT) {
-            
             override fun onMove(
                 recyclerView: RecyclerView,
                 viewHolder: RecyclerView.ViewHolder,
@@ -167,6 +191,35 @@ class MainActivity : AppCompatActivity() {
         }
 
         ItemTouchHelper(swipeToDeleteCallback).attachToRecyclerView(recyclerView)
+    }
+
+    private fun checkLocationPermissions() {
+        val hasFine = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        val hasCoarse = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+
+        if (hasFine || hasCoarse) {
+            getCurrentLocationAndFetchWeather()
+        } else {
+            requestLocationPermissionLauncher.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                )
+            )
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun getCurrentLocationAndFetchWeather() {
+        fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+            if (location != null) {
+                viewModel.fetchWeatherByLocation(location.latitude, location.longitude, apiKey)
+            } else {
+                viewModel.fetchWeather("Nairobi", apiKey)
+            }
+        }.addOnFailureListener {
+            viewModel.fetchWeather("Nairobi", apiKey)
+        }
     }
 
     private fun checkSensorPermissions() {

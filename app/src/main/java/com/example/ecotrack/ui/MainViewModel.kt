@@ -63,4 +63,31 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             dao.deleteLog(log)
         }
     }
+
+    fun fetchWeatherByLocation(lat: Double, lon: Double, apiKey: String) {
+        _weatherState.value = NetworkResult.Loading
+
+        if (apiKey == "YOUR_OPENWEATHER_API_KEY" || apiKey.isBlank()) {
+            _weatherState.value = NetworkResult.Error("Please set a valid OpenWeatherMap API key.")
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.instance.getWeatherByCoordinates(lat, lon, "metric", apiKey)
+                if (response.isSuccessful && response.body() != null) {
+                    _weatherState.value = NetworkResult.Success(response.body()!!)
+                } else {
+                    val message = when (response.code()) {
+                        401 -> "Invalid or inactive API Key (401)."
+                        404 -> "Location not found (404)."
+                        else -> "Server Error (${response.code()}): ${response.message()}"
+                    }
+                    _weatherState.value = NetworkResult.Error(message, response.code())
+                }
+            } catch (e: Exception) {
+                _weatherState.value = NetworkResult.Error("Network failure: ${e.localizedMessage ?: "Unknown error"}")
+            }
+        }
+    }
 }
