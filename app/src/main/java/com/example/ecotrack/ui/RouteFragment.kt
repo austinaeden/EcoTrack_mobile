@@ -27,10 +27,14 @@ class RouteFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        // The User-Agent is set globally in EcoTrackApp.kt to avoid policy blocks.
         map = view.findViewById(R.id.map)
         map?.apply {
             setTileSource(TileSourceFactory.MAPNIK)
             setMultiTouchControls(true)
+
+            // Fix display glitches on some devices
+            setLayerType(View.LAYER_TYPE_HARDWARE, null)
 
             // Handle Dark Mode: Invert colors to make the map dark-themed
             val isNightMode = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
@@ -56,7 +60,7 @@ class RouteFragment : Fragment() {
             val marker = Marker(this)
             marker.position = startPoint
             marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-            marker.title = "Current Location"
+            marker.title = "Start Tracking"
             overlays.add(marker)
         }
     }
