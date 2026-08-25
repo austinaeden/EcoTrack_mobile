@@ -69,4 +69,14 @@ dependencies {
 
     // Google Play Services Location
     implementation("com.google.android.gms:play-services-location:21.1.0")
+
+    // Google Maps SDK & Location Services
+    implementation("com.google.android.gms:play-services-maps:18.2.0")
+    implementation("com.google.android.gms:play-services-location:21.1.0")
+
+    // Charts Library
+    implementation("com.github.philjay:mpandroidchart:v3.1.0")
+
+    // Material Components for Material You & Bottom Navigation
+    implementation("com.google.android.material:material:1.11.0")
 }
