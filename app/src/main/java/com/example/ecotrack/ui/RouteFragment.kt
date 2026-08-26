@@ -1,23 +1,55 @@
 package com.example.ecotrack.ui
 
-import android.content.res.Configuration
-import android.graphics.Color
-import android.graphics.ColorMatrix
-import android.graphics.ColorMatrixColorFilter
+import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.activityViewModels
 import com.example.ecotrack.R
-import org.osmdroid.tileprovider.tilesource.TileSourceFactory
+import org.osmdroid.tileprovider.tilesource.XYTileSource
 import org.osmdroid.util.GeoPoint
+import org.osmdroid.util.MapTileIndex
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
 
 class RouteFragment : Fragment() {
 
     private var map: MapView? = null
+    private val viewModel: MainViewModel by activityViewModels()
+    
+    private val CARTO_API_KEY = "eyJhbGciOiJIUzI1NiJ9.eyJhIjoiYWNfOGM3bXAyaWgiLCJqdGkiOiI0NmYyZjg5NCIsImV4cCI6MTc5MDQyNDg0MH0._RFowJ3wxbOfDCYPA0bHq1qgJPyeGn0pygo0-r7mHIw"
+
+    // Carto Voyager Tile Source with API Key
+    private val CARTO_VOYAGER = object : XYTileSource(
+        "CartoVoyager",
+        0, 20, 256, ".png",
+        arrayOf(
+            "https://a.basemaps.cartocdn.com/rastertiles/voyager/",
+            "https://b.basemaps.cartocdn.com/rastertiles/voyager/",
+            "https://c.basemaps.cartocdn.com/rastertiles/voyager/"
+        ),
+        "Map tiles by CartoDB, under CC BY 3.0. Data by OpenStreetMap, under ODbL."
+    ) {
+        override fun getTileURLString(pTileIndex: Long): String {
+            return baseUrl + MapTileIndex.getZoom(pTileIndex) + "/" + 
+                   MapTileIndex.getX(pTileIndex) + "/" + MapTileIndex.getY(pTileIndex) + 
+                   mImageFilenameEnding + "?api_key=" + CARTO_API_KEY
+        }
+    }
+
+    private val requestPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        if (permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+            permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true) {
+            viewModel.startLocationUpdates()
+        }
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -27,41 +59,54 @@ class RouteFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // The User-Agent is set globally in EcoTrackApp.kt to avoid policy blocks.
         map = view.findViewById(R.id.map)
         map?.apply {
-            setTileSource(TileSourceFactory.MAPNIK)
+            setTileSource(CARTO_VOYAGER)
             setMultiTouchControls(true)
-
-            // Fix display glitches on some devices
-            setLayerType(View.LAYER_TYPE_HARDWARE, null)
-
-            // Handle Dark Mode: Invert colors to make the map dark-themed
-            val isNightMode = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
-            if (isNightMode) {
-                val inverseMatrix = ColorMatrix(floatArrayOf(
-                    -1.0f, 0.0f, 0.0f, 0.0f, 255.0f,
-                    0.0f, -1.0f, 0.0f, 0.0f, 255.0f,
-                    0.0f, 0.0f, -1.0f, 0.0f, 255.0f,
-                    0.0f, 0.0f, 0.0f, 1.0f, 0.0f
-                ))
-                val destinationMatrix = ColorMatrix()
-                destinationMatrix.setSaturation(0f) 
-                inverseMatrix.postConcat(destinationMatrix)
-                overlayManager.tilesOverlay.setColorFilter(ColorMatrixColorFilter(inverseMatrix))
-                setBackgroundColor(Color.BLACK)
-            }
-
-            // Default position (Nairobi)
-            val startPoint = GeoPoint(-1.286389, 36.817223)
             controller.setZoom(16.0)
-            controller.setCenter(startPoint)
+            
+            // Set fallback center (Nairobi)
+            val nairobi = GeoPoint(-1.286389, 36.817223)
+            controller.setCenter(nairobi)
+        }
 
-            val marker = Marker(this)
-            marker.position = startPoint
+        // Observe shared user location
+        viewModel.userLocation.observe(viewLifecycleOwner) { location ->
+            location?.let {
+                val geoPoint = GeoPoint(it.latitude, it.longitude)
+                map?.controller?.animateTo(geoPoint)
+                
+                // Update marker or route points here if needed
+                updateMarker(geoPoint)
+            }
+        }
+
+        checkPermissionsAndStartUpdates()
+    }
+
+    private fun updateMarker(geoPoint: GeoPoint) {
+        map?.let {
+            it.overlays.clear()
+            val marker = Marker(it)
+            marker.position = geoPoint
             marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-            marker.title = "Start Tracking"
-            overlays.add(marker)
+            marker.title = "Your Location"
+            it.overlays.add(marker)
+            it.invalidate()
+        }
+    }
+
+    private fun checkPermissionsAndStartUpdates() {
+        val fineLocation = ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION)
+        val coarseLocation = ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_COARSE_LOCATION)
+
+        if (fineLocation == PackageManager.PERMISSION_GRANTED || coarseLocation == PackageManager.PERMISSION_GRANTED) {
+            viewModel.startLocationUpdates()
+        } else {
+            requestPermissionLauncher.launch(arrayOf(
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ))
         }
     }
 

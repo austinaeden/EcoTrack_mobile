@@ -24,13 +24,10 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.ecotrack.R
 import com.example.ecotrack.data.NetworkResult
 import com.example.ecotrack.data.StepSensorManager
-import com.google.android.gms.location.FusedLocationProviderClient
-import com.google.android.gms.location.LocationServices
 import com.google.android.material.snackbar.Snackbar
 
 class HomeFragment : Fragment() {
 
-    // Share MainViewModel across fragments via activity scope
     private val viewModel: MainViewModel by activityViewModels()
     
     private lateinit var stepSensorManager: StepSensorManager
@@ -41,10 +38,7 @@ class HomeFragment : Fragment() {
     private lateinit var tvLiveSteps: TextView
 
     private var currentTemp: Double = 0.0
-    // Using the provided API key
     private val apiKey = "d5113f92ed94636874a70fbc79f6c49f"
-
-    private lateinit var fusedLocationClient: FusedLocationProviderClient
 
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -57,41 +51,41 @@ class HomeFragment : Fragment() {
     ) { permissions ->
         if (permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true || 
             permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true) {
-            getCurrentLocationAndFetchWeather()
-        } else {
-            viewModel.fetchWeather("Nairobi", apiKey)
+            viewModel.startLocationUpdates()
         }
     }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View? {
-        return inflater.inflate(R.layout.fragment_home, container, false)
-    }
+    ): View? = inflater.inflate(R.layout.fragment_home, container, false)
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // Initialize Views
         tvCity = view.findViewById(R.id.tvCity)
         tvWeatherTemp = view.findViewById(R.id.tvWeatherTemp)
         tvLiveSteps = view.findViewById(R.id.tvLiveSteps)
         val btnSaveLog = view.findViewById<Button>(R.id.btnSaveLog)
         val recyclerView = view.findViewById<RecyclerView>(R.id.recyclerView)
 
-        fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireActivity())
         stepSensorManager = StepSensorManager(requireContext())
-
-        // Setup RecyclerView
         recyclerView.layoutManager = LinearLayoutManager(requireContext())
         recyclerView.adapter = adapter
 
-        // Observe Data
+        // Observe Logs
         viewModel.allLogs.observe(viewLifecycleOwner) { logs ->
             adapter.submitList(logs)
         }
 
+        // Observe Shared Location for Weather Updates
+        viewModel.userLocation.observe(viewLifecycleOwner) { location ->
+            location?.let {
+                viewModel.fetchWeatherByLocation(it.latitude, it.longitude, apiKey)
+            }
+        }
+
+        // Observe Weather State
         viewModel.weatherState.observe(viewLifecycleOwner) { result ->
             when (result) {
                 is NetworkResult.Loading -> {
@@ -107,7 +101,6 @@ class HomeFragment : Fragment() {
                 is NetworkResult.Error -> {
                     tvCity.text = "Weather Unavailable"
                     tvWeatherTemp.text = "-- °C"
-                    Toast.makeText(requireContext(), result.message, Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -118,7 +111,6 @@ class HomeFragment : Fragment() {
             Toast.makeText(requireContext(), "Activity Saved!", Toast.LENGTH_SHORT).show()
         }
 
-        // Start permissions checks
         checkSensorPermissions()
         checkLocationPermissions()
         setupSwipeToDelete(recyclerView)
@@ -152,17 +144,9 @@ class HomeFragment : Fragment() {
 
     private fun checkLocationPermissions() {
         if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-            getCurrentLocationAndFetchWeather()
+            viewModel.startLocationUpdates()
         } else {
             requestLocationPermissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
-        }
-    }
-
-    @SuppressLint("MissingPermission")
-    private fun getCurrentLocationAndFetchWeather() {
-        fusedLocationClient.lastLocation.addOnSuccessListener { location ->
-            if (location != null) viewModel.fetchWeatherByLocation(location.latitude, location.longitude, apiKey)
-            else viewModel.fetchWeather("Nairobi", apiKey)
         }
     }
 

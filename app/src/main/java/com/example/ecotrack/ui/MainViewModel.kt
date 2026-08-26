@@ -1,6 +1,9 @@
 package com.example.ecotrack.ui
 
+import android.annotation.SuppressLint
 import android.app.Application
+import android.location.Location
+import android.os.Looper
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
@@ -11,8 +14,9 @@ import com.example.ecotrack.data.AppDatabase
 import com.example.ecotrack.data.NetworkResult
 import com.example.ecotrack.data.RetrofitClient
 import com.example.ecotrack.data.WeatherResponse
+import com.google.android.gms.location.*
+import org.osmdroid.util.GeoPoint
 import kotlinx.coroutines.launch
-import java.io.IOException
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -22,32 +26,66 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _weatherState = MutableLiveData<NetworkResult<WeatherResponse>>()
     val weatherState: LiveData<NetworkResult<WeatherResponse>> = _weatherState
 
-    fun fetchWeather(city: String, apiKey: String) {
-        _weatherState.value = NetworkResult.Loading
+    // Shared location data
+    private val _userLocation = MutableLiveData<Location?>()
+    val userLocation: LiveData<Location?> = _userLocation
 
-        if (apiKey == "YOUR_OPENWEATHER_API_KEY" || apiKey.isBlank()) {
-            _weatherState.value = NetworkResult.Error("Please set a valid OpenWeatherMap API key.")
-            return
+    // Track coordinates for the route line
+    private val _routePoints = MutableLiveData<List<GeoPoint>>(emptyList())
+    val routePoints: LiveData<List<GeoPoint>> = _routePoints
+
+    private val fusedLocationClient: FusedLocationProviderClient =
+        LocationServices.getFusedLocationProviderClient(application)
+
+    private val locationCallback = object : LocationCallback() {
+        override fun onLocationResult(locationResult: LocationResult) {
+            val location = locationResult.lastLocation ?: return
+            _userLocation.value = location
+            
+            // Append point to the route
+            val currentPoints = _routePoints.value?.toMutableList() ?: mutableListOf()
+            currentPoints.add(GeoPoint(location.latitude, location.longitude))
+            _routePoints.value = currentPoints
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    fun startLocationUpdates() {
+        // Immediate update from last known location
+        fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+            if (location != null && _userLocation.value == null) {
+                _userLocation.value = location
+                _routePoints.value = listOf(GeoPoint(location.latitude, location.longitude))
+            }
         }
 
+        val locationRequest = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 5000)
+            .setMinUpdateIntervalMillis(2000)
+            .build()
+
+        fusedLocationClient.requestLocationUpdates(
+            locationRequest,
+            locationCallback,
+            Looper.getMainLooper()
+        )
+    }
+
+    fun stopLocationUpdates() {
+        fusedLocationClient.removeLocationUpdates(locationCallback)
+    }
+
+    fun fetchWeatherByLocation(lat: Double, lon: Double, apiKey: String) {
+        _weatherState.value = NetworkResult.Loading
         viewModelScope.launch {
             try {
-                val response = RetrofitClient.instance.getWeather(city, "metric", apiKey)
+                val response = RetrofitClient.instance.getWeatherByCoordinates(lat, lon, "metric", apiKey)
                 if (response.isSuccessful && response.body() != null) {
                     _weatherState.value = NetworkResult.Success(response.body()!!)
                 } else {
-                    val message = when (response.code()) {
-                        401 -> "Invalid or inactive API Key (401). Note: New keys take up to 2 hours to activate."
-                        404 -> "City '$city' not found (404)."
-                        429 -> "API rate limit exceeded (429)."
-                        else -> "Server Error (${response.code()}): ${response.message()}"
-                    }
-                    _weatherState.value = NetworkResult.Error(message, response.code())
+                    _weatherState.value = NetworkResult.Error("Location not found", response.code())
                 }
-            } catch (e: IOException) {
-                _weatherState.value = NetworkResult.Error("No internet connection. Please check your network.")
             } catch (e: Exception) {
-                _weatherState.value = NetworkResult.Error("Unexpected Error: ${e.localizedMessage ?: "Unknown"}")
+                _weatherState.value = NetworkResult.Error("Network failure: ${e.localizedMessage}")
             }
         }
     }
@@ -64,30 +102,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun fetchWeatherByLocation(lat: Double, lon: Double, apiKey: String) {
-        _weatherState.value = NetworkResult.Loading
-
-        if (apiKey == "YOUR_OPENWEATHER_API_KEY" || apiKey.isBlank()) {
-            _weatherState.value = NetworkResult.Error("Please set a valid OpenWeatherMap API key.")
-            return
-        }
-
-        viewModelScope.launch {
-            try {
-                val response = RetrofitClient.instance.getWeatherByCoordinates(lat, lon, "metric", apiKey)
-                if (response.isSuccessful && response.body() != null) {
-                    _weatherState.value = NetworkResult.Success(response.body()!!)
-                } else {
-                    val message = when (response.code()) {
-                        401 -> "Invalid or inactive API Key (401)."
-                        404 -> "Location not found (404)."
-                        else -> "Server Error (${response.code()}): ${response.message()}"
-                    }
-                    _weatherState.value = NetworkResult.Error(message, response.code())
-                }
-            } catch (e: Exception) {
-                _weatherState.value = NetworkResult.Error("Network failure: ${e.localizedMessage ?: "Unknown error"}")
-            }
-        }
+    override fun onCleared() {
+        super.onCleared()
+        stopLocationUpdates()
     }
 }
