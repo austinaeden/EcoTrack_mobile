@@ -98,7 +98,7 @@ git clone https://github.com/your-username/EcoTrack.git
 cd EcoTrack
 ```
 
-#### 2. Configure OpenWeatherMap API Key
+#### 2. Configure OpenWeatherMap & Map API Key
 
 Ensure your API key is configured inside your project (`HomeFragment.kt` or `secrets.properties` depending on your setup):
 
