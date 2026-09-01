@@ -23,14 +23,11 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.ecotrack.R
 import com.example.ecotrack.data.NetworkResult
-import com.example.ecotrack.data.StepSensorManager
 import com.google.android.material.snackbar.Snackbar
 
 class HomeFragment : Fragment() {
 
     private val viewModel: MainViewModel by activityViewModels()
-    
-    private lateinit var stepSensorManager: StepSensorManager
     private val adapter = ActivityAdapter()
 
     private lateinit var tvCity: TextView
@@ -45,7 +42,7 @@ class HomeFragment : Fragment() {
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted ->
-        if (isGranted) startStepCounter()
+        // Permission result handled, MainViewModel is already listening to sensors
     }
 
     private val requestLocationPermissionLauncher = registerForActivityResult(
@@ -72,13 +69,17 @@ class HomeFragment : Fragment() {
         val btnResetSteps = view.findViewById<Button>(R.id.btnResetSteps)
         val recyclerView = view.findViewById<RecyclerView>(R.id.recyclerView)
 
-        stepSensorManager = StepSensorManager(requireContext())
         recyclerView.layoutManager = LinearLayoutManager(requireContext())
         recyclerView.adapter = adapter
 
         btnResetSteps.setOnClickListener {
-            stepSensorManager.reset()
+            viewModel.resetSteps()
             Toast.makeText(requireContext(), "Steps Reset!", Toast.LENGTH_SHORT).show()
+        }
+
+        // Observe Current Steps from ViewModel (This persists across screens)
+        viewModel.currentSteps.observe(viewLifecycleOwner) { steps ->
+            tvLiveSteps.text = "Current Steps: $steps"
         }
 
         // Observe Logs
@@ -89,19 +90,15 @@ class HomeFragment : Fragment() {
         // Observe Shared Location for Weather Updates and "GPS Walking" steps
         viewModel.userLocation.observe(viewLifecycleOwner) { location ->
             location?.let { newLoc ->
-                // Only fetch weather if we haven't fetched it yet, or if the user moved > 1km
                 if (lastWeatherLocation == null || lastWeatherLocation!!.distanceTo(newLoc) > 1000) {
                     viewModel.fetchWeatherByLocation(newLoc.latitude, newLoc.longitude, apiKey)
                     lastWeatherLocation = newLoc
                 }
                 
-                // Distance-based step calculation
                 lastLocation?.let { oldLoc ->
                     val distance = oldLoc.distanceTo(newLoc)
-                    
-                    // Filter out GPS Jitter: Only count movement if it's > 1.0 meter
                     if (distance > 1.0f) {
-                        stepSensorManager.addVirtualStep(distance)
+                        viewModel.addVirtualStep(distance)
                     }
                 }
                 lastLocation = newLoc
@@ -129,7 +126,7 @@ class HomeFragment : Fragment() {
         }
 
         btnSaveLog.setOnClickListener {
-            val steps = stepSensorManager.currentSteps
+            val steps = viewModel.currentSteps.value ?: 0
             viewModel.saveLog("Activity Session", steps, currentTemp)
             Toast.makeText(requireContext(), "Activity Saved!", Toast.LENGTH_SHORT).show()
         }
@@ -141,7 +138,6 @@ class HomeFragment : Fragment() {
 
     private fun setupSwipeToDelete(recyclerView: RecyclerView) {
         val deleteBackground = ColorDrawable(Color.RED)
-        val deleteIcon = ContextCompat.getDrawable(requireContext(), R.drawable.ic_delete)
 
         ItemTouchHelper(object : ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.LEFT or ItemTouchHelper.RIGHT) {
             override fun onMove(rv: RecyclerView, vh: RecyclerView.ViewHolder, t: RecyclerView.ViewHolder): Boolean = false
@@ -174,33 +170,13 @@ class HomeFragment : Fragment() {
     }
 
     private fun checkSensorPermissions() {
-        // We always start the counter because the Accelerometer fallback 
-        // doesn't require ACTIVITY_RECOGNITION permission.
-        startStepCounter()
-
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && 
             ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACTIVITY_RECOGNITION) != PackageManager.PERMISSION_GRANTED) {
             requestPermissionLauncher.launch(Manifest.permission.ACTIVITY_RECOGNITION)
         }
     }
 
-    private fun startStepCounter() {
-        stepSensorManager.startListening(
-            onStepUpdate = { steps ->
-                tvLiveSteps.text = "Current Steps: $steps"
-            },
-            onMovement = {
-                viewModel.onMovementDetected()
-            },
-            onDailyUpdate = { dailyTotal, date ->
-                // Sync the "All Day" total to the database for statistics
-                viewModel.syncDailySteps(date, dailyTotal)
-            }
-        )
-    }
-
     override fun onDestroyView() {
         super.onDestroyView()
-        stepSensorManager.stopListening()
     }
 }

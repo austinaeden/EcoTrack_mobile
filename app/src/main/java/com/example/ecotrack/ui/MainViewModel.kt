@@ -19,6 +19,7 @@ import org.osmdroid.util.GeoPoint
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.launch
+import com.example.ecotrack.data.StepSensorManager
 
 /**
  * MainViewModel handles the business logic for the app's main screens.
@@ -28,6 +29,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val dao = AppDatabase.getDatabase(application).activityLogDao()
     private val dailyDao = AppDatabase.getDatabase(application).dailyStepDao()
+    
+    // Manage step sensors at the ViewModel level to persist across screen changes
+    private val stepSensorManager = StepSensorManager(application)
 
     private val currentUserId = MutableStateFlow(-1)
 
@@ -61,6 +65,37 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
      */
     private val _weatherState = MutableLiveData<NetworkResult<WeatherResponse>>()
     val weatherState: LiveData<NetworkResult<WeatherResponse>> = _weatherState
+
+    // Step Tracking State
+    private val _currentSteps = MutableLiveData(0)
+    val currentSteps: LiveData<Int> = _currentSteps
+
+    private val _dailyTotal = MutableLiveData(0)
+    val dailyTotal: LiveData<Int> = _dailyTotal
+
+    init {
+        // Start listening to sensors as soon as ViewModel is created
+        stepSensorManager.startListening(
+            onStepUpdate = { steps ->
+                _currentSteps.postValue(steps)
+            },
+            onMovement = {
+                onMovementDetected()
+            },
+            onDailyUpdate = { total, date ->
+                _dailyTotal.postValue(total)
+                syncDailySteps(date, total)
+            }
+        )
+    }
+
+    fun resetSteps() {
+        stepSensorManager.reset()
+    }
+
+    fun addVirtualStep(distance: Float) {
+        stepSensorManager.addVirtualStep(distance)
+    }
 
     /**
      * Holds the most recent GPS location of the user.
