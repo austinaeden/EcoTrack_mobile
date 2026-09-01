@@ -8,6 +8,8 @@ import android.view.ViewGroup
 import android.widget.TextView
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.example.ecotrack.R
 import com.github.mikephil.charting.charts.BarChart
 import com.github.mikephil.charting.components.XAxis
@@ -19,6 +21,7 @@ import com.github.mikephil.charting.formatter.IndexAxisValueFormatter
 class AnalyticsFragment : Fragment() {
 
     private val viewModel: MainViewModel by activityViewModels()
+    private val dailyStepAdapter = DailyStepAdapter()
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -27,14 +30,25 @@ class AnalyticsFragment : Fragment() {
         val view = inflater.inflate(R.layout.fragment_analytics, container, false)
         val barChart = view.findViewById<BarChart>(R.id.barChart)
         val tvTitle = view.findViewById<TextView>(R.id.tvAnalyticsTitle)
+        val rvDailySteps = view.findViewById<RecyclerView>(R.id.rvDailySteps)
+
+        // Setup RecyclerView
+        rvDailySteps.layoutManager = LinearLayoutManager(requireContext())
+        rvDailySteps.adapter = dailyStepAdapter
 
         // Set specific dark grey color for interpretation words
         val darkGrey = Color.parseColor("#616161")
         tvTitle.setTextColor(darkGrey)
 
+        // Observe Session Logs for the Chart (Last 7 days trends)
         viewModel.allLogs.observe(viewLifecycleOwner) { logs ->
             val weeklyData = viewModel.getWeeklyStepData(logs)
             updateChart(barChart, weeklyData, darkGrey)
+        }
+
+        // Observe Daily History for the List (Actual daily totals)
+        viewModel.dailyStepHistory.observe(viewLifecycleOwner) { dailySteps ->
+            dailyStepAdapter.submitList(dailySteps)
         }
 
         return view

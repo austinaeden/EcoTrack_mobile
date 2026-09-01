@@ -190,8 +190,11 @@ class HomeFragment : Fragment() {
                 tvLiveSteps.text = "Current Steps: $steps"
             },
             onMovement = {
-                // High-precision sync: Sensor detected movement, notify ViewModel
                 viewModel.onMovementDetected()
+            },
+            onDailyUpdate = { dailyTotal, date ->
+                // Sync the "All Day" total to the database for statistics
+                viewModel.syncDailySteps(date, dailyTotal)
             }
         )
     }

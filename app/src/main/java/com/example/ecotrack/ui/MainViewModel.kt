@@ -27,6 +27,7 @@ import kotlinx.coroutines.launch
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val dao = AppDatabase.getDatabase(application).activityLogDao()
+    private val dailyDao = AppDatabase.getDatabase(application).dailyStepDao()
 
     private val currentUserId = MutableStateFlow(-1)
 
@@ -39,12 +40,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     
     /**
      * Observes activity logs scoped specifically to the current logged-in user.
-     * Automatically updates whenever the user changes or the database is updated.
      */
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     val allLogs: LiveData<List<ActivityLog>> = currentUserId.flatMapLatest { userId ->
         if (userId == -1) kotlinx.coroutines.flow.flowOf(emptyList())
         else dao.getAllLogs(userId)
+    }.asLiveData()
+
+    /**
+     * Observes historical daily step totals for the current user.
+     */
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    val dailyStepHistory: LiveData<List<com.example.ecotrack.data.DailyStep>> = currentUserId.flatMapLatest { userId ->
+        if (userId == -1) kotlinx.coroutines.flow.flowOf(emptyList())
+        else dailyDao.getDailyStepsForUser(userId)
     }.asLiveData()
 
     /**
@@ -170,6 +179,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun saveLog(log: ActivityLog) {
         viewModelScope.launch {
             dao.insertLog(log)
+        }
+    }
+
+    /**
+     * Updates the total daily steps in the database for the current user and date.
+     */
+    fun syncDailySteps(date: String, totalSteps: Int) {
+        val userId = currentUserId.value
+        if (userId == -1) return
+        
+        viewModelScope.launch {
+            dailyDao.insertOrUpdate(com.example.ecotrack.data.DailyStep(date, userId, totalSteps))
         }
     }
 
