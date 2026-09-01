@@ -37,6 +37,8 @@ class HomeFragment : Fragment() {
     private lateinit var tvWeatherTemp: TextView
     private lateinit var tvLiveSteps: TextView
 
+    private var lastLocation: android.location.Location? = null
+    private var lastWeatherLocation: android.location.Location? = null
     private var currentTemp: Double = 0.0
     private val apiKey = "d5113f92ed94636874a70fbc79f6c49f"
 
@@ -84,10 +86,25 @@ class HomeFragment : Fragment() {
             adapter.submitList(logs)
         }
 
-        // Observe Shared Location for Weather Updates
+        // Observe Shared Location for Weather Updates and "GPS Walking" steps
         viewModel.userLocation.observe(viewLifecycleOwner) { location ->
-            location?.let {
-                viewModel.fetchWeatherByLocation(it.latitude, it.longitude, apiKey)
+            location?.let { newLoc ->
+                // Only fetch weather if we haven't fetched it yet, or if the user moved > 1km
+                if (lastWeatherLocation == null || lastWeatherLocation!!.distanceTo(newLoc) > 1000) {
+                    viewModel.fetchWeatherByLocation(newLoc.latitude, newLoc.longitude, apiKey)
+                    lastWeatherLocation = newLoc
+                }
+                
+                // Distance-based step calculation
+                lastLocation?.let { oldLoc ->
+                    val distance = oldLoc.distanceTo(newLoc)
+                    
+                    // Filter out GPS Jitter: Only count movement if it's > 1.0 meter
+                    if (distance > 1.0f) {
+                        stepSensorManager.addVirtualStep(distance)
+                    }
+                }
+                lastLocation = newLoc
             }
         }
 
@@ -157,18 +174,26 @@ class HomeFragment : Fragment() {
     }
 
     private fun checkSensorPermissions() {
+        // We always start the counter because the Accelerometer fallback 
+        // doesn't require ACTIVITY_RECOGNITION permission.
+        startStepCounter()
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && 
             ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACTIVITY_RECOGNITION) != PackageManager.PERMISSION_GRANTED) {
             requestPermissionLauncher.launch(Manifest.permission.ACTIVITY_RECOGNITION)
-        } else {
-            startStepCounter()
         }
     }
 
     private fun startStepCounter() {
-        stepSensorManager.startListening { steps ->
-            tvLiveSteps.text = "Current Steps: $steps"
-        }
+        stepSensorManager.startListening(
+            onStepUpdate = { steps ->
+                tvLiveSteps.text = "Current Steps: $steps"
+            },
+            onMovement = {
+                // High-precision sync: Sensor detected movement, notify ViewModel
+                viewModel.onMovementDetected()
+            }
+        )
     }
 
     override fun onDestroyView() {

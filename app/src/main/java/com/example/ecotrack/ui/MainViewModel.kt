@@ -84,12 +84,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     /**
-     * Configures and starts high-accuracy location tracking.
-     * It requests updates every 5 seconds.
+     * Configures and starts high-precision, sub-meter location tracking.
+     * Interval is set to 1 second with a 0-meter distance threshold for maximum sensitivity.
      */
     @SuppressLint("MissingPermission")
     fun startLocationUpdates() {
-        // Get the last known location immediately for a faster initial UI response
         fusedLocationClient.lastLocation.addOnSuccessListener { location ->
             if (location != null && _userLocation.value == null) {
                 _userLocation.value = location
@@ -97,8 +96,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
 
-        val locationRequest = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 5000)
-            .setMinUpdateIntervalMillis(2000)
+        // Request updates every 1 second, even for minimal movements (0 meters)
+        val locationRequest = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 1000)
+            .setMinUpdateIntervalMillis(1000)
+            .setMinUpdateDistanceMeters(0f) 
             .build()
 
         fusedLocationClient.requestLocationUpdates(
@@ -106,6 +107,22 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             locationCallback,
             Looper.getMainLooper()
         )
+    }
+
+    /**
+     * Called when hardware sensors detect device movement (e.g. step or shake).
+     * This ensures the UI remains responsive even if GPS is momentarily stagnant.
+     */
+    fun onMovementDetected() {
+        val lastLoc = _userLocation.value ?: return
+        val currentPoints = _routePoints.value?.toMutableList() ?: mutableListOf()
+        
+        // Only append if the last point is significantly different or to force a redraw
+        val newPoint = GeoPoint(lastLoc.latitude, lastLoc.longitude)
+        if (currentPoints.isEmpty() || currentPoints.last() != newPoint) {
+            currentPoints.add(newPoint)
+            _routePoints.value = currentPoints
+        }
     }
 
     /**
