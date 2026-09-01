@@ -8,12 +8,22 @@ import com.example.ecotrack.ui.HomeFragment
 import com.example.ecotrack.ui.RouteFragment
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.example.ecotrack.R
+import com.example.ecotrack.ui.MainViewModel
+import androidx.activity.viewModels
 
 class MainActivity : AppCompatActivity() {
+
+    private val viewModel: MainViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        // Receive the Logged-in User ID
+        val userId = intent.getIntExtra("USER_ID", -1)
+        if (userId != -1) {
+            viewModel.setCurrentUser(userId)
+        }
 
         val bottomNav = findViewById<BottomNavigationView>(R.id.bottomNavigation)
 

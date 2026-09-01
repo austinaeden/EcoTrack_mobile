@@ -134,7 +134,7 @@ class HomeFragment : Fragment() {
                 val log = adapter.currentList[position]
                 viewModel.deleteLog(log)
                 Snackbar.make(recyclerView, "Log deleted", Snackbar.LENGTH_LONG)
-                    .setAction("UNDO") { viewModel.saveLog(log.title, log.stepCount, log.temperature) }
+                    .setAction("UNDO") { viewModel.saveLog(log) }
                     .show()
             }
 

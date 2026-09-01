@@ -16,42 +16,80 @@ import com.example.ecotrack.data.RetrofitClient
 import com.example.ecotrack.data.WeatherResponse
 import com.google.android.gms.location.*
 import org.osmdroid.util.GeoPoint
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.launch
 
+/**
+ * MainViewModel handles the business logic for the app's main screens.
+ * It manages location tracking, weather data fetching, and database operations.
+ */
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val dao = AppDatabase.getDatabase(application).activityLogDao()
-    val allLogs: LiveData<List<ActivityLog>> = dao.getAllLogs().asLiveData()
 
+    private val currentUserId = MutableStateFlow(-1)
+
+    /**
+     * Sets the active user ID to filter logs and associate new activities.
+     */
+    fun setCurrentUser(userId: Int) {
+        currentUserId.value = userId
+    }
+    
+    /**
+     * Observes activity logs scoped specifically to the current logged-in user.
+     * Automatically updates whenever the user changes or the database is updated.
+     */
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    val allLogs: LiveData<List<ActivityLog>> = currentUserId.flatMapLatest { userId ->
+        if (userId == -1) kotlinx.coroutines.flow.flowOf(emptyList())
+        else dao.getAllLogs(userId)
+    }.asLiveData()
+
+    /**
+     * Represents the current state of the weather network request (Loading, Success, or Error).
+     */
     private val _weatherState = MutableLiveData<NetworkResult<WeatherResponse>>()
     val weatherState: LiveData<NetworkResult<WeatherResponse>> = _weatherState
 
-    // Shared location data
+    /**
+     * Holds the most recent GPS location of the user.
+     */
     private val _userLocation = MutableLiveData<Location?>()
     val userLocation: LiveData<Location?> = _userLocation
 
-    // Track coordinates for the route line
+    /**
+     * Stores a list of coordinates visited during the current session to draw a route on the map.
+     */
     private val _routePoints = MutableLiveData<List<GeoPoint>>(emptyList())
     val routePoints: LiveData<List<GeoPoint>> = _routePoints
 
     private val fusedLocationClient: FusedLocationProviderClient =
         LocationServices.getFusedLocationProviderClient(application)
 
+    /**
+     * Callback that triggers whenever the GPS provides a new location update.
+     */
     private val locationCallback = object : LocationCallback() {
         override fun onLocationResult(locationResult: LocationResult) {
             val location = locationResult.lastLocation ?: return
             _userLocation.value = location
             
-            // Append point to the route
+            // Append the new coordinate to the route points for map drawing
             val currentPoints = _routePoints.value?.toMutableList() ?: mutableListOf()
             currentPoints.add(GeoPoint(location.latitude, location.longitude))
             _routePoints.value = currentPoints
         }
     }
 
+    /**
+     * Configures and starts high-accuracy location tracking.
+     * It requests updates every 5 seconds.
+     */
     @SuppressLint("MissingPermission")
     fun startLocationUpdates() {
-        // Immediate update from last known location
+        // Get the last known location immediately for a faster initial UI response
         fusedLocationClient.lastLocation.addOnSuccessListener { location ->
             if (location != null && _userLocation.value == null) {
                 _userLocation.value = location
@@ -70,10 +108,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         )
     }
 
+    /**
+     * Stops requesting location updates to conserve device battery.
+     */
     fun stopLocationUpdates() {
         fusedLocationClient.removeLocationUpdates(locationCallback)
     }
 
+    /**
+     * Fetches current weather data from OpenWeatherMap API using latitude and longitude.
+     * Updates [weatherState] with the result.
+     */
     fun fetchWeatherByLocation(lat: Double, lon: Double, apiKey: String) {
         _weatherState.value = NetworkResult.Loading
         viewModelScope.launch {
@@ -90,23 +135,46 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    /**
+     * Saves a new activity log linked to the current user.
+     */
     fun saveLog(title: String, steps: Int, temp: Double) {
+        val userId = currentUserId.value
+        if (userId == -1) return
+        
         viewModelScope.launch {
-            dao.insertLog(ActivityLog(title = title, stepCount = steps, temperature = temp))
+            dao.insertLog(ActivityLog(userId = userId, title = title, stepCount = steps, temperature = temp))
         }
     }
 
+    /**
+     * Re-saves a log (useful for UNDO functionality).
+     */
+    fun saveLog(log: ActivityLog) {
+        viewModelScope.launch {
+            dao.insertLog(log)
+        }
+    }
+
+    /**
+     * Deletes a specific activity log from the local database.
+     */
     fun deleteLog(log: ActivityLog) {
         viewModelScope.launch {
             dao.deleteLog(log)
         }
     }
 
+    /**
+     * Processes raw activity logs to generate a summary of steps for the last 7 days.
+     * This is useful for displaying charts/graphs in the UI.
+     * @return A list of Pairs containing the day name (e.g., "Mon") and the total steps.
+     */
     fun getWeeklyStepData(logs: List<ActivityLog>): List<Pair<String, Float>> {
         val days = arrayOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
         val weeklyData = mutableMapOf<String, Float>()
 
-        // Initialize last 7 days with 0
+        // Initialize last 7 days with 0 to ensure the chart has no gaps
         for (i in 0 until 7) {
             val dCalendar = java.util.Calendar.getInstance()
             dCalendar.add(java.util.Calendar.DAY_OF_YEAR, -i)
@@ -114,12 +182,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             weeklyData[dayName] = 0f
         }
 
-        // Aggregate steps by day
+        // Add up all steps for logs that occurred within the last week
         logs.forEach { log ->
             val logCalendar = java.util.Calendar.getInstance()
             logCalendar.timeInMillis = log.timestamp
             
-            // Check if log is within the last 7 days
             val diff = (System.currentTimeMillis() - log.timestamp) / (1000 * 60 * 60 * 24)
             if (diff < 7) {
                 val dayName = days[logCalendar.get(java.util.Calendar.DAY_OF_WEEK) - 1]
@@ -127,7 +194,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
 
-        // Return in correct order (Mon to Sun or starting from 6 days ago)
+        // Return the data sorted from 6 days ago up to today
         val result = mutableListOf<Pair<String, Float>>()
         for (i in 6 downTo 0) {
             val dCalendar = java.util.Calendar.getInstance()
@@ -138,6 +205,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         return result
     }
 
+    /**
+     * Called when the ViewModel is no longer used (e.g., when the Activity is finished).
+     * Ensures that location tracking stops to prevent memory leaks or battery drain.
+     */
     override fun onCleared() {
         super.onCleared()
         stopLocationUpdates()
