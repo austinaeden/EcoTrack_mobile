@@ -102,6 +102,42 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun getWeeklyStepData(logs: List<ActivityLog>): List<Pair<String, Float>> {
+        val days = arrayOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
+        val weeklyData = mutableMapOf<String, Float>()
+
+        // Initialize last 7 days with 0
+        for (i in 0 until 7) {
+            val dCalendar = java.util.Calendar.getInstance()
+            dCalendar.add(java.util.Calendar.DAY_OF_YEAR, -i)
+            val dayName = days[dCalendar.get(java.util.Calendar.DAY_OF_WEEK) - 1]
+            weeklyData[dayName] = 0f
+        }
+
+        // Aggregate steps by day
+        logs.forEach { log ->
+            val logCalendar = java.util.Calendar.getInstance()
+            logCalendar.timeInMillis = log.timestamp
+            
+            // Check if log is within the last 7 days
+            val diff = (System.currentTimeMillis() - log.timestamp) / (1000 * 60 * 60 * 24)
+            if (diff < 7) {
+                val dayName = days[logCalendar.get(java.util.Calendar.DAY_OF_WEEK) - 1]
+                weeklyData[dayName] = (weeklyData[dayName] ?: 0f) + log.stepCount.toFloat()
+            }
+        }
+
+        // Return in correct order (Mon to Sun or starting from 6 days ago)
+        val result = mutableListOf<Pair<String, Float>>()
+        for (i in 6 downTo 0) {
+            val dCalendar = java.util.Calendar.getInstance()
+            dCalendar.add(java.util.Calendar.DAY_OF_YEAR, -i)
+            val dayName = days[dCalendar.get(java.util.Calendar.DAY_OF_WEEK) - 1]
+            result.add(dayName to (weeklyData[dayName] ?: 0f))
+        }
+        return result
+    }
+
     override fun onCleared() {
         super.onCleared()
         stopLocationUpdates()

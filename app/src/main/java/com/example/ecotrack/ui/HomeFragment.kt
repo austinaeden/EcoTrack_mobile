@@ -67,11 +67,17 @@ class HomeFragment : Fragment() {
         tvWeatherTemp = view.findViewById(R.id.tvWeatherTemp)
         tvLiveSteps = view.findViewById(R.id.tvLiveSteps)
         val btnSaveLog = view.findViewById<Button>(R.id.btnSaveLog)
+        val btnResetSteps = view.findViewById<Button>(R.id.btnResetSteps)
         val recyclerView = view.findViewById<RecyclerView>(R.id.recyclerView)
 
         stepSensorManager = StepSensorManager(requireContext())
         recyclerView.layoutManager = LinearLayoutManager(requireContext())
         recyclerView.adapter = adapter
+
+        btnResetSteps.setOnClickListener {
+            stepSensorManager.reset()
+            Toast.makeText(requireContext(), "Steps Reset!", Toast.LENGTH_SHORT).show()
+        }
 
         // Observe Logs
         viewModel.allLogs.observe(viewLifecycleOwner) { logs ->

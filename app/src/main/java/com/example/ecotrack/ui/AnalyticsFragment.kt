@@ -7,6 +7,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.activityViewModels
 import com.example.ecotrack.R
 import com.github.mikephil.charting.charts.BarChart
 import com.github.mikephil.charting.components.XAxis
@@ -16,6 +17,8 @@ import com.github.mikephil.charting.data.BarEntry
 import com.github.mikephil.charting.formatter.IndexAxisValueFormatter
 
 class AnalyticsFragment : Fragment() {
+
+    private val viewModel: MainViewModel by activityViewModels()
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -29,20 +32,18 @@ class AnalyticsFragment : Fragment() {
         val darkGrey = Color.parseColor("#616161")
         tvTitle.setTextColor(darkGrey)
 
-        setupChart(barChart, darkGrey)
+        viewModel.allLogs.observe(viewLifecycleOwner) { logs ->
+            val weeklyData = viewModel.getWeeklyStepData(logs)
+            updateChart(barChart, weeklyData, darkGrey)
+        }
+
         return view
     }
 
-    private fun setupChart(barChart: BarChart, textColor: Int) {
-        val entries = arrayListOf(
-            BarEntry(0f, 4200f),
-            BarEntry(1f, 6800f),
-            BarEntry(2f, 8500f),
-            BarEntry(3f, 5100f),
-            BarEntry(4f, 9200f),
-            BarEntry(5f, 11000f),
-            BarEntry(6f, 7400f)
-        )
+    private fun updateChart(barChart: BarChart, dataPoints: List<Pair<String, Float>>, textColor: Int) {
+        val entries = dataPoints.mapIndexed { index, pair ->
+            BarEntry(index.toFloat(), pair.second)
+        }
 
         val dataSet = BarDataSet(entries, "Steps Walked").apply {
             color = Color.parseColor("#4CAF50")
@@ -50,11 +51,11 @@ class AnalyticsFragment : Fragment() {
             valueTextSize = 10f
         }
 
-        val days = arrayOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+        val labels = dataPoints.map { it.first }.toTypedArray()
         
         barChart.apply {
             xAxis.apply {
-                valueFormatter = IndexAxisValueFormatter(days)
+                valueFormatter = IndexAxisValueFormatter(labels)
                 position = XAxis.XAxisPosition.BOTTOM
                 granularity = 1f
                 isGranularityEnabled = true
