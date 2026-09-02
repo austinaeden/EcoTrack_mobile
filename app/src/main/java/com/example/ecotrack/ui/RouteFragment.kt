@@ -16,6 +16,9 @@ import org.osmdroid.util.GeoPoint
 import org.osmdroid.util.MapTileIndex
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
+import org.osmdroid.views.overlay.Polyline
+import android.graphics.Color
+import android.widget.Button
 
 class RouteFragment : Fragment() {
 
@@ -63,6 +66,10 @@ class RouteFragment : Fragment() {
         map?.apply {
             setTileSource(CARTO_VOYAGER)
             setMultiTouchControls(true)
+            
+            // Enable built-in Zoom In/Out buttons
+            setBuiltInZoomControls(true)
+            
             controller.setZoom(16.0)
             
             // Set fallback center (Nairobi)
@@ -70,28 +77,53 @@ class RouteFragment : Fragment() {
             controller.setCenter(nairobi)
         }
 
-        // Observe shared user location
+        val btnResetPath = view.findViewById<Button>(R.id.btnResetPath)
+        btnResetPath.setOnClickListener {
+            viewModel.clearRoutePoints()
+        }
+
+        // Observe shared user location for center and marker
         viewModel.userLocation.observe(viewLifecycleOwner) { location ->
             location?.let {
                 val geoPoint = GeoPoint(it.latitude, it.longitude)
                 map?.controller?.animateTo(geoPoint)
-                
-                // Update marker or route points here if needed
                 updateMarker(geoPoint)
             }
+        }
+
+        // Observe route points to draw the path
+        val pathOverlay = Polyline().apply {
+            outlinePaint.color = Color.BLUE
+            outlinePaint.strokeWidth = 10f
+        }
+        
+        viewModel.routePoints.observe(viewLifecycleOwner) { points ->
+            pathOverlay.setPoints(points)
+            if (points.isNotEmpty()) {
+                if (!map?.overlays?.contains(pathOverlay)!!) {
+                    map?.overlays?.add(pathOverlay)
+                }
+            } else {
+                map?.overlays?.remove(pathOverlay)
+            }
+            map?.invalidate()
         }
 
         checkPermissionsAndStartUpdates()
     }
 
+    private var userMarker: Marker? = null
+
     private fun updateMarker(geoPoint: GeoPoint) {
         map?.let {
-            it.overlays.clear()
-            val marker = Marker(it)
-            marker.position = geoPoint
-            marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-            marker.title = "Your Location"
-            it.overlays.add(marker)
+            if (userMarker == null) {
+                userMarker = Marker(it).apply {
+                    setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                    title = "Your Location"
+                }
+                it.overlays.add(userMarker)
+            }
+            userMarker?.position = geoPoint
             it.invalidate()
         }
     }
