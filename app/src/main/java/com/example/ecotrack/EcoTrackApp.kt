@@ -9,6 +9,15 @@ class EcoTrackApp : Application() {
     override fun onCreate() {
         super.onCreate()
         
+        // Load and apply theme preference
+        val prefs = getSharedPreferences("eco_track_prefs", MODE_PRIVATE)
+        val isDarkMode = prefs.getBoolean("dark_mode", false)
+        if (isDarkMode) {
+            androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES)
+        } else {
+            androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO)
+        }
+
         // Apply Material You dynamic colors
         DynamicColors.applyToActivitiesIfAvailable(this)
 

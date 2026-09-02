@@ -6,6 +6,7 @@ import androidx.fragment.app.Fragment
 import com.example.ecotrack.ui.AnalyticsFragment
 import com.example.ecotrack.ui.HomeFragment
 import com.example.ecotrack.ui.RouteFragment
+import com.example.ecotrack.ui.SettingsFragment
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.example.ecotrack.R
 import com.example.ecotrack.ui.MainViewModel
@@ -38,6 +39,7 @@ class MainActivity : AppCompatActivity() {
                 R.id.nav_home -> HomeFragment()
                 R.id.nav_map -> RouteFragment()
                 R.id.nav_analytics -> AnalyticsFragment()
+                R.id.nav_settings -> SettingsFragment()
                 else -> HomeFragment()
             }
             loadFragment(selectedFragment)

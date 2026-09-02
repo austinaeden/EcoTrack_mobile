@@ -33,6 +33,14 @@ class LoginActivity : AppCompatActivity() {
         setContentView(R.layout.activity_login)
 
         auth = FirebaseAuth.getInstance()
+
+        // 1. AUTO-LOGIN: If a user is already signed in, go to MainActivity immediately
+        val currentUser = auth.currentUser
+        if (currentUser != null) {
+            proceedToMain(currentUser.uid)
+            return
+        }
+
         etEmail = findViewById(R.id.etEmail)
         etPassword = findViewById(R.id.etPassword)
 
@@ -63,18 +71,30 @@ class LoginActivity : AppCompatActivity() {
                                 proceedToMain(user.uid)
                             }
                         } else {
-                            Toast.makeText(this, "Online Login Failed: ${task.exception?.message}", Toast.LENGTH_SHORT).show()
+                            // ENHANCED ERROR HANDLING (Online)
+                            val message = when (val exception = task.exception) {
+                                is com.google.firebase.auth.FirebaseAuthInvalidUserException -> 
+                                    "This email is not registered. Please sign up first."
+                                is com.google.firebase.auth.FirebaseAuthInvalidCredentialsException -> 
+                                    "Incorrect password. Please try again."
+                                else -> "Login Failed: ${exception?.localizedMessage}"
+                            }
+                            Toast.makeText(this@LoginActivity, message, Toast.LENGTH_LONG).show()
                         }
                     }
             } else {
                 // OFFLINE LOGIN (Local Database)
                 lifecycleScope.launch {
                     val localUser = localUserDao.getLocalUser(email)
-                    if (localUser != null && localUser.passwordHash == hashPassword(password)) {
-                        Toast.makeText(this@LoginActivity, "Offline Login Successful!", Toast.LENGTH_SHORT).show()
-                        proceedToMain(localUser.firebaseUid)
+                    if (localUser != null) {
+                        if (localUser.passwordHash == hashPassword(password)) {
+                            Toast.makeText(this@LoginActivity, "Offline Login Successful!", Toast.LENGTH_SHORT).show()
+                            proceedToMain(localUser.firebaseUid)
+                        } else {
+                            Toast.makeText(this@LoginActivity, "Incorrect password for offline access.", Toast.LENGTH_LONG).show()
+                        }
                     } else {
-                        Toast.makeText(this@LoginActivity, "Offline Login Failed. Check credentials or go online.", Toast.LENGTH_LONG).show()
+                        Toast.makeText(this@LoginActivity, "No local record for this user. Please log in online once first.", Toast.LENGTH_LONG).show()
                     }
                 }
             }
@@ -83,6 +103,16 @@ class LoginActivity : AppCompatActivity() {
         btnSignup.setOnClickListener {
             val email = etEmail.text.toString().trim()
             val password = etPassword.text.toString().trim()
+
+            if (email.isEmpty() || password.isEmpty()) {
+                Toast.makeText(this, "Please fill all fields", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            if (password.length < 6) {
+                Toast.makeText(this, "Password must be at least 6 characters", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
 
             if (!isOnline()) {
                 Toast.makeText(this, "Internet required for Sign Up", Toast.LENGTH_SHORT).show()
@@ -99,7 +129,13 @@ class LoginActivity : AppCompatActivity() {
                             proceedToMain(user.uid)
                         }
                     } else {
-                        Toast.makeText(this, "Signup Failed: ${task.exception?.message}", Toast.LENGTH_SHORT).show()
+                        // ENHANCED ERROR HANDLING (Signup)
+                        val message = when (task.exception) {
+                            is com.google.firebase.auth.FirebaseAuthUserCollisionException -> 
+                                "This email is already in use. Please log in instead."
+                            else -> "Signup Failed: ${task.exception?.localizedMessage}"
+                        }
+                        Toast.makeText(this@LoginActivity, message, Toast.LENGTH_LONG).show()
                     }
                 }
         }
