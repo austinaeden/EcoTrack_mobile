@@ -77,6 +77,16 @@
                 android:textAlignment="viewStart"
                 app:icon="@android:drawable/ic_menu_send" />
 
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnSyncNow"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="Sync to Cloud Now"
+                android:textAlignment="viewStart"
+                app:icon="@android:drawable/stat_notify_sync" />
+
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 

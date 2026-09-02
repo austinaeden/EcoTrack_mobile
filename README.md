@@ -1,62 +1,47 @@
 # 🌿 EcoTrack
 
-**EcoTrack** is a native Android application built with Kotlin that enables users to track physical activity alongside live weather metrics and outdoor routes. Designed using Modern Android Development (MAD) practices and MVVM architecture, EcoTrack seamlessly bridges hardware step sensors, real-time location-based weather data, and interactive navigation into a unified experience.
+**EcoTrack** is a high-precision physical activity and environmental tracking application for Android. Built with Kotlin and modern Jetpack components, it uniquely correlates fitness movement with real-time weather metrics, providing users with a comprehensive context for their outdoor activities.
 
 ---
 
-## 🎯 How EcoTrack Helps You
+## 🌟 Key Features
 
-* **Informed Workout Planning:** See current temperature and humidity before heading out so you can adjust your pace or hydration needs.
-* **Seamless Daily Tracking:** Automatic background step sensing requires no manual start/stop toggles, preserving battery life while keeping track of your movement.
-* **Activity Contextualization:** Record outdoor sessions with captured weather parameters, creating a historical record of your performance across different weather conditions.
-* **Effortless UI Navigation:** Easily transition between your live daily feed, mapping routes, and activity analytics through an intuitive bottom navigation interface.
+### 🚀 High-Precision Motion Engine
+*   **Hybrid Tracking:** Combines `FusedLocationProviderClient` for sub-meter GPS accuracy with hardware **Accelerometer** and **Gyroscope** sensor fusion.
+*   **Intelligent Step Logic:** Implements a strict **1 Meter = 1 Step** ratio. The app intelligently distinguishes between active walking and passive travel (like being in a car) by gating GPS movement with physical device vibration detection.
+*   **Real-Time Responsiveness:** 1-second update intervals ensure your live route polyline and step count are always in sync with your actual movement.
 
----
+### 🔐 Advanced Security & Multi-User Support
+*   **Hybrid Authentication:** Seamlessly integrates **Firebase Authentication** for cloud identity with a **Local Room Database** fallback for offline access.
+*   **Data Isolation:** All activity logs and step history are cryptographically associated with a unique Firebase UID, ensuring your data remains private even on shared devices.
+*   **Secure Password Recovery:** Integrated automated "Forgot Password" email flow powered by Firebase.
 
-## 📱 What You Can Do
+### 📊 Comprehensive Analytics & History
+*   **Weekly Trends:** Visualizes your activity performance over the last 7 days using interactive bar charts.
+*   **Persistent Daily History:** Tracks your total daily steps in a dedicated history list that survives manual session resets.
+*   **Midnight Reset:** Automatically finalizes daily totals and resets live counters at exactly 12:00 AM.
 
-* **Monitor Steps in Real Time:** Track steps continuously using your device's native hardware step sensor.
-* **View Local Weather Conditions:** Automatically fetch your current city's temperature and humidity via GPS location services.
-* **Log Activity Sessions:** Tap **Save Activity Log** to store workout sessions complete with step count and current temperature.
-* **Manage Activity History:** Browse logged sessions in a list and swipe left or right to delete them.
-* **Undo Accidental Deletes:** Instantly restore any deleted activity log using the built-in **UNDO** banner.
-* **Navigate Dedicated Views:** Switch between your **Home Dashboard**, **Route Tracker**, and **Analytics** via the bottom navigation bar.
+### ☁️ Environmental Context
+*   **Weather Correlation:** Automatically fetches temperature, humidity, and location names via the **OpenWeatherMap API** whenever an activity is logged.
+*   **Smart Sync:** Optimizes battery and data usage by only refreshing weather data when the user has moved more than 1 kilometer from their last checkpoint.
 
----
-
-## 🚀 How to Use EcoTrack
-
-1. **Permissions:** Launch the app and grant **Location** and **Activity Recognition** permissions when prompted.
-2. **View Live Conditions:** The **Home** tab immediately displays your current city, live temperature, humidity, and active step count.
-3. **Save a Log:** After completing a walk or run, tap **Save Activity Log** to persist your progress and environmental conditions to your history list.
-4. **Delete or Undo:** Swipe any item left or right on the history list to delete it. Tap **UNDO** on the bottom popup banner if you deleted an entry by mistake.
-5. **Switch Tabs:** Use the **Bottom Navigation Bar** at the bottom of the screen to switch between **Home**, **Route**, and **Analytics**.
-
----
-
-## ✨ Key Technical Features
-
-* 🧩 **Single-Activity Architecture:** Uses `MainActivity` as a lightweight fragment host, managing screen swaps across `HomeFragment`, `RouteFragment`, and `AnalyticsFragment` via `BottomNavigationView`.
-* 🎨 **Material You Dynamic Colors:** Integrates `DynamicColors.applyToActivitiesIfAvailable()` in custom `Application` class (`EcoTrackApp`) to adapt the app UI to the device wallpaper on Android 12+ (API 31+).
-* 📍 **GPS & Weather Integration:** Leverages Google Play Services `FusedLocationProviderClient` and OpenWeatherMap API for dynamic geolocation-based weather fetching (with automatic fallback to default locations).
-* 👟 **Hardware Step Counter:** Integrates directly with Android's native `SensorManager` (`TYPE_STEP_COUNTER`) for hardware-level tracking with low power overhead.
-* 🗑️ **Interactive Canvas Gestures:** Features custom `ItemTouchHelper` implementation with visual background drawing and dynamic swipe margins for smooth list deletions.
-* 🔄 **Shared State Management:** Utilizes Activity-scoped `MainViewModel` (`activityViewModels()`) across fragments to maintain consistent state throughout screen transitions.
+### 🎨 Personalization & Support
+*   **Theme Switching:** Full support for **Dark Mode** and Light Mode, with preferences persisted across app restarts.
+*   **Material You:** Adapts UI colors dynamically based on the device's wallpaper (Android 12+).
+*   **Direct Feedback:** Integrated support system allowing users to send feedback directly to the developer's email from within the app.
 
 ---
 
 ## 🛠️ Architecture & Tech Stack
 
-EcoTrack follows **Android Jetpack** guidelines and **MVVM (Model-View-ViewModel)** pattern:
-
-* **Language:** Kotlin
-* **Architecture:** Single-Activity Architecture + MVVM
-* **UI Components:** Material Design 3 (MaterialCardView, MaterialButton, BottomNavigationView), Fragments, `RecyclerView`, `ItemTouchHelper`, `Snackbar`
-* **Navigation:** Custom Fragment Transactions anchored in `FrameLayout`
-* **Asynchronous Operations:** Kotlin Coroutines & `LiveData`
-* **Network Services:** Retrofit / OkHttp (OpenWeatherMap API)
-* **Location & Hardware:** Google Location Services (`FusedLocationProviderClient`), Android `SensorManager`
-* **Personalization:** Material Dynamic Colors (`DynamicColors`)
+*   **Language:** 100% Kotlin
+*   **Architecture:** MVVM (Model-View-ViewModel) + Single-Activity Architecture
+*   **Database:** Room Persistence Library (Offline first)
+*   **Authentication:** Firebase Auth (Online) + Local Credential Caching (Offline)
+*   **Networking:** Retrofit 2 & GSON
+*   **Mapping:** OSMDroid (OpenStreetMap)
+*   **Charts:** MPAndroidChart
+*   **Hardware:** FusedLocationProvider (GPS), SensorManager (Accelerometer, Gyroscope, Step Counter)
 
 ---
 
@@ -64,17 +49,22 @@ EcoTrack follows **Android Jetpack** guidelines and **MVVM (Model-View-ViewModel
 
 ```text
 com.example.ecotrack/
- ├── EcoTrackApp.kt              # App-level config (Dynamic Colors init)
- ├── MainActivity.kt             # Fragment host & BottomNavigationView logic
+ ├── EcoTrackApp.kt              # Global configuration & Theme initialization
+ ├── MainActivity.kt             # Main navigation host
  ├── data/
- │    ├── NetworkResult.kt       # Sealed class for network state management
- │    └── StepSensorManager.kt   # Hardware step sensor wrapper
+ │    ├── AppDatabase.kt         # Room database configuration (v6)
+ │    ├── ActivityLog.kt         # Activity session entity
+ │    ├── DailyStep.kt           # All-day step history entity
+ │    ├── LocalUser.kt           # Offline credential caching
+ │    ├── StepSensorManager.kt   # Sensor fusion & step calculation logic
+ │    └── RetrofitClient.kt      # Weather API integration
  └── ui/
-      ├── HomeFragment.kt        # Home screen UI logic & location handlers
-      ├── RouteFragment.kt       # Route mapping view
-      ├── AnalyticsFragment.kt   # Progress analytics view
-      ├── MainViewModel.kt       # Shared activity-scoped ViewModel
-      └── ActivityAdapter.kt     # RecyclerView adapter for activity logs
+      ├── LoginActivity.kt       # Hybrid Online/Offline Auth logic
+      ├── HomeFragment.kt        # Live dashboard & movement tracking
+      ├── RouteFragment.kt       # Interactive route mapping
+      ├── AnalyticsFragment.kt   # Graphs and daily history lists
+      ├── SettingsFragment.kt    # Theme control, Logout, and Feedback
+      └── MainViewModel.kt       # Shared state & business logic
 ```
 
 ---
@@ -82,41 +72,17 @@ com.example.ecotrack/
 ## 🔧 Setup & Installation
 
 ### Prerequisites
+- **Android Studio:** Ladybug or newer.
+- **Firebase:** Requires `google-services.json` in the `/app` folder.
+- **API Key:** OpenWeatherMap API key required in `HomeFragment.kt`.
 
-- **Android Studio:** Ladybug or newer recommended.
-- **JDK:** Java 17.
-- **Min SDK:** API Level 24 (Android 7.0+).
-- **Target SDK:** API Level 34 / 35.
-- **Physical Device:** Recommended for hardware step sensor and GPS testing.
+### Implementation Steps
+1.  **Firebase Setup:** Enable "Email/Password" sign-in provider in your Firebase Console.
+2.  **Permissions:** Grant **Location** (Fine/Coarse) and **Physical Activity** permissions.
+3.  **Testing Tracking:** Use the **Virtual Sensors** (Device Pose) in the emulator to simulate shaking while moving along a GPS route to trigger step increments.
 
-### Step-by-Step Guide
+---
 
-#### 1. Clone the Repository
-
-```bash
-git clone https://github.com/your-username/EcoTrack.git
-cd EcoTrack
-```
-
-#### 2. Configure OpenWeatherMap & Map API Key
-
-Ensure your API key is configured inside your project (`HomeFragment.kt` or `secrets.properties` depending on your setup):
-
-```kotlin
-private val apiKey = "YOUR_OPENWEATHERMAP_API_KEY"
-```
-
-#### 3. Register Application Class
-
-Ensure `.EcoTrackApp` is registered in `app/src/main/AndroidManifest.xml`:
-
-```xml
-<application
-    android:name=".EcoTrackApp"
-    android:label="@string/app_name"
-    ... >
-```
-
-#### 4. Build & Run
-
-Open the project in Android Studio, sync Gradle files, and run the app on an emulator or connected physical Android device.
+## 👨‍💻 Developer
+Developed with ❤️ by **Austin Eden**.  
+For support or feedback, please use the in-app feedback tool or contact: `austinaeden@gmail.com`

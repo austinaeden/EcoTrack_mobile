@@ -20,15 +20,19 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.launch
 import com.example.ecotrack.data.StepSensorManager
+import com.example.ecotrack.data.FirebaseSyncManager
 
 /**
  * MainViewModel handles the business logic for the app's main screens.
- * It manages location tracking, weather data fetching, and database operations.
  */
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val dao = AppDatabase.getDatabase(application).activityLogDao()
-    private val dailyDao = AppDatabase.getDatabase(application).dailyStepDao()
+    private val db = AppDatabase.getDatabase(application)
+    private val dao = db.activityLogDao()
+    private val dailyDao = db.dailyStepDao()
+    
+    // Cloud Sync Manager
+    private val syncManager = FirebaseSyncManager(db)
     
     // Manage step sensors at the ViewModel level to persist across screen changes
     private val stepSensorManager = StepSensorManager(application)
@@ -85,6 +89,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             onDailyUpdate = { total, date ->
                 _dailyTotal.postValue(total)
                 syncDailySteps(date, total)
+            },
+            onMidnight = {
+                // Trigger Cloud Sync when midnight is reached
+                viewModelScope.launch {
+                    syncManager.syncDataToCloud(currentUserId.value)
+                }
             }
         )
     }
@@ -226,6 +236,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         
         viewModelScope.launch {
             dailyDao.insertOrUpdate(com.example.ecotrack.data.DailyStep(date, userId, totalSteps))
+        }
+    }
+
+    /**
+     * Manually triggers a cloud sync.
+     */
+    fun triggerCloudSync() {
+        viewModelScope.launch {
+            syncManager.syncDataToCloud(currentUserId.value)
         }
     }
 

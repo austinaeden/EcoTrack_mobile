@@ -11,6 +11,7 @@ import android.view.ViewGroup
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.activityViewModels
 import com.example.ecotrack.R
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.materialswitch.MaterialSwitch
@@ -18,6 +19,7 @@ import com.google.firebase.auth.FirebaseAuth
 
 class SettingsFragment : Fragment() {
 
+    private val viewModel: MainViewModel by activityViewModels()
     private lateinit var prefs: SharedPreferences
 
     override fun onCreateView(
@@ -31,6 +33,7 @@ class SettingsFragment : Fragment() {
         prefs = requireContext().getSharedPreferences("eco_track_prefs", Context.MODE_PRIVATE)
         val switchDarkMode = view.findViewById<MaterialSwitch>(R.id.switchDarkMode)
         val btnFeedback = view.findViewById<MaterialButton>(R.id.btnFeedback)
+        val btnSyncNow = view.findViewById<MaterialButton>(R.id.btnSyncNow)
         val btnLogout = view.findViewById<MaterialButton>(R.id.btnLogout)
 
         // Set initial switch state
@@ -49,6 +52,11 @@ class SettingsFragment : Fragment() {
 
         btnFeedback.setOnClickListener {
             sendFeedback()
+        }
+
+        btnSyncNow.setOnClickListener {
+            viewModel.triggerCloudSync()
+            Toast.makeText(requireContext(), "Cloud sync started...", Toast.LENGTH_SHORT).show()
         }
 
         btnLogout.setOnClickListener {

@@ -49,6 +49,7 @@ class StepSensorManager(context: Context) : SensorEventListener {
     private var onStepUpdateListener: ((Int) -> Unit)? = null
     private var onMovementDetectedListener: (() -> Unit)? = null
     private var onDailyTotalListener: ((Int, String) -> Unit)? = null
+    private var onMidnightResetListener: (() -> Unit)? = null
 
     init {
         loadDailyTotal()
@@ -68,10 +69,16 @@ class StepSensorManager(context: Context) : SensorEventListener {
 
     private fun getTodayDate(): String = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
 
-    fun startListening(onStepUpdate: (Int) -> Unit, onMovement: () -> Unit, onDailyUpdate: (Int, String) -> Unit) {
+    fun startListening(
+        onStepUpdate: (Int) -> Unit, 
+        onMovement: () -> Unit, 
+        onDailyUpdate: (Int, String) -> Unit,
+        onMidnight: () -> Unit
+    ) {
         onStepUpdateListener = onStepUpdate
         onMovementDetectedListener = onMovement
         onDailyTotalListener = onDailyUpdate
+        onMidnightResetListener = onMidnight
         
         stepSensor?.let { sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_UI) }
         accelSensor?.let { sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME) }
@@ -177,6 +184,7 @@ class StepSensorManager(context: Context) : SensorEventListener {
             
             onStepUpdateListener?.invoke(0)
             onDailyTotalListener?.invoke(0, today)
+            onMidnightResetListener?.invoke()
         }
     }
 
