@@ -3,6 +3,7 @@ package com.example.ecotrack.ui
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
+import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -29,6 +30,7 @@ class SettingsFragment : Fragment() {
 
         prefs = requireContext().getSharedPreferences("eco_track_prefs", Context.MODE_PRIVATE)
         val switchDarkMode = view.findViewById<MaterialSwitch>(R.id.switchDarkMode)
+        val btnFeedback = view.findViewById<MaterialButton>(R.id.btnFeedback)
         val btnLogout = view.findViewById<MaterialButton>(R.id.btnLogout)
 
         // Set initial switch state
@@ -45,6 +47,10 @@ class SettingsFragment : Fragment() {
             }
         }
 
+        btnFeedback.setOnClickListener {
+            sendFeedback()
+        }
+
         btnLogout.setOnClickListener {
             logoutUser()
         }
@@ -52,6 +58,19 @@ class SettingsFragment : Fragment() {
 
     private fun saveThemePreference(isDark: Boolean) {
         prefs.edit().putBoolean("dark_mode", isDark).apply()
+    }
+
+    private fun sendFeedback() {
+        val intent = Intent(Intent.ACTION_SENDTO).apply {
+            data = Uri.parse("mailto:")
+            putExtra(Intent.EXTRA_EMAIL, arrayOf("austinaeden@gmail.com"))
+            putExtra(Intent.EXTRA_SUBJECT, "EcoTrack App Feedback")
+        }
+        try {
+            startActivity(Intent.createChooser(intent, "Send feedback via..."))
+        } catch (e: Exception) {
+            Toast.makeText(requireContext(), "No email app found", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun logoutUser() {
