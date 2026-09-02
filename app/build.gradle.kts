@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.google.services)
     id("kotlin-kapt")
 }
 
@@ -83,4 +84,8 @@ dependencies {
 
     // Charts Library
     implementation("com.github.philjay:mpandroidchart:v3.1.0")
+
+    // Firebase
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.auth.ktx)
 }

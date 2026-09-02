@@ -33,12 +33,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     // Manage step sensors at the ViewModel level to persist across screen changes
     private val stepSensorManager = StepSensorManager(application)
 
-    private val currentUserId = MutableStateFlow(-1)
+    private val currentUserId = MutableStateFlow("")
 
     /**
      * Sets the active user ID to filter logs and associate new activities.
      */
-    fun setCurrentUser(userId: Int) {
+    fun setCurrentUser(userId: String) {
         currentUserId.value = userId
     }
     
@@ -47,7 +47,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
      */
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     val allLogs: LiveData<List<ActivityLog>> = currentUserId.flatMapLatest { userId ->
-        if (userId == -1) kotlinx.coroutines.flow.flowOf(emptyList())
+        if (userId.isEmpty()) kotlinx.coroutines.flow.flowOf(emptyList())
         else dao.getAllLogs(userId)
     }.asLiveData()
 
@@ -56,7 +56,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
      */
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     val dailyStepHistory: LiveData<List<com.example.ecotrack.data.DailyStep>> = currentUserId.flatMapLatest { userId ->
-        if (userId == -1) kotlinx.coroutines.flow.flowOf(emptyList())
+        if (userId.isEmpty()) kotlinx.coroutines.flow.flowOf(emptyList())
         else dailyDao.getDailyStepsForUser(userId)
     }.asLiveData()
 
@@ -201,7 +201,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
      */
     fun saveLog(title: String, steps: Int, temp: Double) {
         val userId = currentUserId.value
-        if (userId == -1) return
+        if (userId.isEmpty()) return
         
         viewModelScope.launch {
             dao.insertLog(ActivityLog(userId = userId, title = title, stepCount = steps, temperature = temp))
@@ -222,7 +222,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
      */
     fun syncDailySteps(date: String, totalSteps: Int) {
         val userId = currentUserId.value
-        if (userId == -1) return
+        if (userId.isEmpty()) return
         
         viewModelScope.launch {
             dailyDao.insertOrUpdate(com.example.ecotrack.data.DailyStep(date, userId, totalSteps))

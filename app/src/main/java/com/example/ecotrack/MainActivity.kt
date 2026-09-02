@@ -19,9 +19,9 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // Receive the Logged-in User ID
-        val userId = intent.getIntExtra("USER_ID", -1)
-        if (userId != -1) {
+        // Receive the Logged-in User ID (Firebase UID)
+        val userId = intent.getStringExtra("USER_ID")
+        if (!userId.isNullOrEmpty()) {
             viewModel.setCurrentUser(userId)
         }
 

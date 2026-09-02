@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.Flow
 @Entity(tableName = "daily_steps")
 data class DailyStep(
     @PrimaryKey val date: String, // Format: YYYY-MM-DD
-    val userId: Int,
+    val userId: String, // Firebase UID
     val steps: Int
 )
 
@@ -21,8 +21,8 @@ interface DailyStepDao {
     suspend fun insertOrUpdate(dailyStep: DailyStep)
 
     @Query("SELECT * FROM daily_steps WHERE userId = :userId ORDER BY date DESC")
-    fun getDailyStepsForUser(userId: Int): Flow<List<DailyStep>>
+    fun getDailyStepsForUser(userId: String): Flow<List<DailyStep>>
 
     @Query("SELECT * FROM daily_steps WHERE userId = :userId AND date = :date LIMIT 1")
-    suspend fun getStepsForDate(userId: Int, date: String): DailyStep?
+    suspend fun getStepsForDate(userId: String, date: String): DailyStep?
 }
