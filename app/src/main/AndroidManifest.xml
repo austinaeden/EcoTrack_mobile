@@ -20,6 +20,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.EcoTrack">
 
+        <!-- 1. Authentication Screen (Launcher) -->
         <activity
             android:name=".ui.LoginActivity"
             android:exported="true">
@@ -29,8 +30,19 @@
             </intent-filter>
         </activity>
 
+        <!-- 2. Main Dashboard -->
         <activity
             android:name=".MainActivity"
+            android:exported="false" />
+
+        <!-- 3. Active Tracking Screen (NEW) -->
+        <activity
+            android:name=".ui.TrackingActivity"
+            android:exported="false" />
+
+        <!-- 4. Workout History / Logs Screen (NEW) -->
+        <activity
+            android:name=".ui.HistoryActivity"
             android:exported="false" />
 
     </application>
