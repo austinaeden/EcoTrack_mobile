@@ -14,6 +14,7 @@ import com.example.ecotrack.R
 import com.example.ecotrack.data.AppDatabase
 import com.example.ecotrack.data.LocalUser
 import com.google.android.material.textfield.TextInputEditText
+import com.google.android.material.textfield.TextInputLayout
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 import java.security.MessageDigest
@@ -43,6 +44,8 @@ class LoginActivity : AppCompatActivity() {
 
         etEmail = findViewById(R.id.etEmail)
         etPassword = findViewById(R.id.etPassword)
+        val etConfirmPassword = findViewById<TextInputEditText>(R.id.etConfirmPassword)
+        val tilConfirmPassword = findViewById<TextInputLayout>(R.id.tilConfirmPassword)
 
         val btnLogin = findViewById<Button>(R.id.btnLogin)
         val btnSignup = findViewById<Button>(R.id.btnSignup)
@@ -51,6 +54,9 @@ class LoginActivity : AppCompatActivity() {
         val localUserDao = AppDatabase.getDatabase(this).localUserDao()
 
         btnLogin.setOnClickListener {
+            // Hide confirm password field during login
+            tilConfirmPassword.visibility = android.view.View.GONE
+            
             val email = etEmail.text.toString().trim()
             val password = etPassword.text.toString().trim()
 
@@ -101,11 +107,24 @@ class LoginActivity : AppCompatActivity() {
         }
 
         btnSignup.setOnClickListener {
+            // Show confirm password field if it's hidden
+            if (tilConfirmPassword.visibility == android.view.View.GONE) {
+                tilConfirmPassword.visibility = android.view.View.VISIBLE
+                Toast.makeText(this, "Please confirm your password to sign up", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
             val email = etEmail.text.toString().trim()
             val password = etPassword.text.toString().trim()
+            val confirmPassword = etConfirmPassword.text.toString().trim()
 
-            if (email.isEmpty() || password.isEmpty()) {
+            if (email.isEmpty() || password.isEmpty() || confirmPassword.isEmpty()) {
                 Toast.makeText(this, "Please fill all fields", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            if (password != confirmPassword) {
+                Toast.makeText(this, "Passwords do not match", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
