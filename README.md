@@ -90,5 +90,5 @@ com.example.ecotrack/
 ---
 
 ## 👨‍💻 Developer
-Developed with ❤️ by **Austin Eden**.  
+Developed with by **Austin Aeden**.  
 For support or feedback, please use the in-app feedback tool or contact: `austinaeden@gmail.com`
